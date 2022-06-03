@@ -7,8 +7,6 @@ endif ()
 
 project(board LANGUAGES C ASM)
 
-find_program(PYTHON python3 REQUIRED)
-
 set(CMAKE_EXECUTABLE_SUFFIX .elf)
 
 set(pedal_project_flags     -mcpu=cortex-m3 -msoft-float -DSTM32F2 -DSTM32F205xx -O2 -DPEDAL)
@@ -72,12 +70,20 @@ execute_process(
 
 set(BUILDER "DEV")
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UC)
-
-add_custom_target(repo_git_revision_header
+add_custom_target(gen_git_revision_header
     BYPRODUCTS obj/gitversion.h
     COMMAND ${CMAKE_COMMAND} -E echo "const uint8_t gitversion[] = \"${BUILDER}-${GIT_VERSION_SHORT}-${CMAKE_BUILD_TYPE_UC}\";" > obj/gitversion.h
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Creating gitversion.h"
+    VERBATIM
+    )
+
+find_program(PYTHON3 python3 REQUIRED)
+add_custom_target(gen_cert_header
+    BYPRODUCTS obj/cert.h
+    COMMAND ${PYTHON3} gen_cert_header.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Creating cert.h files"
     VERBATIM
     )
 
@@ -113,7 +119,6 @@ include_directories(. .. stm32fx/inc stm32h7/inc ${CMAKE_CURRENT_BINARY_DIR})
 #
 # project macros
 #
-find_program(PYTHON python3 REQUIRED)
 macro(post_build proj_name)
   set(sign_py ${CMAKE_CURRENT_SOURCE_DIR}/../crypto/sign.py)
   add_custom_command(TARGET ${proj_name} POST_BUILD
@@ -145,7 +150,7 @@ macro(add_project proj_name main startup_file linker_script app_start_address pr
     target_link_libraries(bootstub.${proj_name} PUBLIC ${flags} ${project_flags} ${common_flags}
 	-T${CMAKE_CURRENT_SOURCE_DIR}/${linker_script}
 	-Wl,-Map,bootstub.${proj_name}.map)
-    add_dependencies(bootstub.${proj_name} repo_git_revision_header)
+    add_dependencies(bootstub.${proj_name} gen_git_revision_header gen_cert_header)
     post_build(bootstub.${proj_name})
 
     # Build main
@@ -155,7 +160,7 @@ macro(add_project proj_name main startup_file linker_script app_start_address pr
 	-Wl,--section-start,.isr_vector=${app_start_address}
 	-T${CMAKE_CURRENT_SOURCE_DIR}/${linker_script}
 	-Wl,-Map,${proj_name}.map)
-    add_dependencies(${proj_name} repo_git_revision_header)
+    add_dependencies(${proj_name} gen_git_revision_header gen_cert_header)
     post_build(${proj_name})
 
     install(FILES
