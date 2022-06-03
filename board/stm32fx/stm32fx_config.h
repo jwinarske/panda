@@ -12,7 +12,7 @@
 
 #define CORE_FREQ 96U // in Mhz
 //APB1 - 48Mhz, APB2 - 96Mhz
-#define APB1_FREQ CORE_FREQ/2U 
+#define APB1_FREQ CORE_FREQ/2U
 #define APB2_FREQ CORE_FREQ/1U
 
 #define BOOTLOADER_ADDRESS 0x1FFF0004U
@@ -84,7 +84,7 @@
   #include "stm32fx/llusb.h"
 #endif
 
-#ifdef PEDAL
+#if defined(PEDAL) || defined(PEDAL_USB)
   #include "stm32fx/lldac.h"
 #endif
 
